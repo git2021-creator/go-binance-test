@@ -32,7 +32,7 @@ func (as *apiService) depthWebsocket(symbol string) {
 		defer c.Close()
 
 		if webSocketKeepAlive {
-			keepAlive(c, 5 * time.Second)
+			keepAlive(c, 15 * time.Second)
 		}
 
 		for {
