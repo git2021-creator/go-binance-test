@@ -47,6 +47,8 @@ func (as *apiService) depthWebsocket(symbol string) {
 				}
 
 				fmt.Println(message)
+				// 数据处理
+				//handle(message)
 			}
 		}
 	}()
