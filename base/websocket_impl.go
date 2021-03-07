@@ -1,19 +1,20 @@
-package base
+package main
 
 import (
 	"fmt"
-	"github.com/go-kit/kit/log"
 	"github.com/gorilla/websocket"
+	"log"
 	"strings"
+	"time"
 )
 
-func (as *apiService) depthWebsocket(dwr DepthWebsocketRequest) (chan *DepthEvent, chan struct{}, error) {
-	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@depth", strings.ToLower(dwr.Symbol))
+func (as *apiService) depthWebsocket(symbol string) {
+	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@depth", strings.ToLower(symbol))
 
 	c,_,err := websocket.DefaultDialer.Dial(url, nil)
 
 	if err != nil {
-		log.Logger.Log("dail: ", err)
+		log.Fatal("dail err: ", err)
 	}
 
 	done := make(chan struct{})
@@ -30,13 +31,41 @@ func (as *apiService) depthWebsocket(dwr DepthWebsocketRequest) (chan *DepthEven
 				_, message, err := c.ReadMessage()
 
 				if err != nil {
-					log.Logger.Log("ws read err: ", err)
+					log.Fatal("ws read err: ", err)
 				}
 
 				fmt.Println(message)
 			}
 		}
 	}()
-	return nil, nil, nil
 }
 
+func keepAlive(c *websocket.Conn, timeout time.Duration) {
+	ticker := time.NewTicker(timeout)
+
+	lastResponse := time.Now()
+
+	c.SetPongHandler(func(msg string) error {
+		lastResponse = time.Now()
+		return nil
+	})
+
+	go func() {
+		defer ticker.Stop()
+
+		for {
+			deadline := time.Now().Add(10 * time.Second)
+			err := c.WriteControl(websocket.PingMessage, []byte{}, deadline)
+			if err != nil {
+				return
+			}
+
+			<- ticker.C
+
+			if time.Since(lastResponse) > timeout {
+				c.Close()
+				return
+			}
+		}
+	}()
+}
