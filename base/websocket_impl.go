@@ -8,6 +8,15 @@ import (
 	"time"
 )
 
+var (
+	webSocketKeepAlive = false
+)
+
+// 初始化连接
+func intizlizeConnect() {
+	webSocketKeepAlive = true
+}
+
 func (as *apiService) depthWebsocket(symbol string) {
 	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@depth", strings.ToLower(symbol))
 
@@ -17,11 +26,14 @@ func (as *apiService) depthWebsocket(symbol string) {
 		log.Fatal("dail err: ", err)
 	}
 
-	done := make(chan struct{})
+	intizlizeConnect()
 
 	go func() {
 		defer c.Close()
-		defer close(done)
+
+		if webSocketKeepAlive {
+			keepAlive(c, 5 * time.Second)
+		}
 
 		for {
 			select {
@@ -39,6 +51,7 @@ func (as *apiService) depthWebsocket(symbol string) {
 		}
 	}()
 }
+
 
 func keepAlive(c *websocket.Conn, timeout time.Duration) {
 	ticker := time.NewTicker(timeout)
